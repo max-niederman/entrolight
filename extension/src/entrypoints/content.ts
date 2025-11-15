@@ -24,6 +24,7 @@ let latestScheduledRunId = 0;
 let suppressMutationScheduling = false;
 let rerunQueuedDuringSuppression = false;
 let domObserver: MutationObserver | null = null;
+let ignoredMutationDepth = 0;
 
 export default defineContentScript({
   matches: ["*://*/*"],
@@ -49,6 +50,9 @@ function observeDomChanges() {
     return;
   }
   domObserver = new MutationObserver(() => {
+    if (ignoredMutationDepth > 0) {
+      return;
+    }
     if (suppressMutationScheduling) {
       rerunQueuedDuringSuppression = true;
       return;
@@ -206,27 +210,34 @@ function applyCssHighlights(doc: Document, ranges: Range[]) {
     return;
   }
   ensureHighlightStyles(doc);
-  CSS.highlights!.delete(HIGHLIGHT_NAME);
-  if (ranges.length === 0) {
+  runWithIgnoredMutations(() => {
+    CSS.highlights!.delete(HIGHLIGHT_NAME);
+  });
+  const mergedRanges = mergeRanges(ranges);
+  if (mergedRanges.length === 0) {
     console.log("entrolight: cleared existing highlights (no ranges)");
     return;
   }
-  CSS.highlights!.set(HIGHLIGHT_NAME, new Highlight(...ranges));
-  console.log("entrolight: applied CSS highlights", { count: ranges.length });
+  runWithIgnoredMutations(() => {
+    CSS.highlights!.set(HIGHLIGHT_NAME, new Highlight(...mergedRanges));
+  });
+  console.log("entrolight: applied CSS highlights", { count: mergedRanges.length, original: ranges.length });
 }
 
 function ensureHighlightStyles(doc: Document) {
   if (doc.getElementById(HIGHLIGHT_STYLE_ID)) {
     return;
   }
-  const style = doc.createElement("style");
-  style.id = HIGHLIGHT_STYLE_ID;
-  style.textContent = `::highlight(${HIGHLIGHT_NAME}) { background-color: rgba(255, 145, 0, 0.4); border-radius: 0.2em; box-shadow: 0 0 0 1px rgba(255, 145, 0, 0.25); }`;
   const parent = doc.head ?? doc.documentElement;
   if (!parent) {
     return;
   }
-  parent.appendChild(style);
+  runWithIgnoredMutations(() => {
+    const style = doc.createElement("style");
+    style.id = HIGHLIGHT_STYLE_ID;
+    style.textContent = `::highlight(${HIGHLIGHT_NAME}) { background-color: rgba(255, 145, 0, 0.4); border-radius: 0.2em; box-shadow: 0 0 0 1px rgba(255, 145, 0, 0.25); }`;
+    parent.appendChild(style);
+  });
 }
 
 function isHighlightApiAvailable(): boolean {
@@ -333,4 +344,42 @@ function computeSurpriseThreshold(tokens: InferenceToken[], quantile: number): n
   const clampedQuantile = Math.min(1, Math.max(0, quantile));
   const index = Math.floor(clampedQuantile * (meaningfulSurprises.length - 1));
   return meaningfulSurprises[index]!;
+}
+
+function mergeRanges(ranges: Range[]): Range[] {
+  if (ranges.length === 0) {
+    return [];
+  }
+  const sorted = [...ranges].sort((a, b) => {
+    const startComparison = a.compareBoundaryPoints(Range.START_TO_START, b);
+    if (startComparison !== 0) {
+      return startComparison;
+    }
+    return a.compareBoundaryPoints(Range.END_TO_END, b);
+  });
+  const merged: Range[] = [];
+  let current = sorted[0]!.cloneRange();
+  for (let i = 1; i < sorted.length; i += 1) {
+    const candidate = sorted[i]!;
+    const gap = current.compareBoundaryPoints(Range.END_TO_START, candidate);
+    if (gap >= 0) {
+      if (current.compareBoundaryPoints(Range.END_TO_END, candidate) < 0) {
+        current.setEnd(candidate.endContainer, candidate.endOffset);
+      }
+      continue;
+    }
+    merged.push(current);
+    current = candidate.cloneRange();
+  }
+  merged.push(current);
+  return merged;
+}
+
+function runWithIgnoredMutations(callback: () => void) {
+  ignoredMutationDepth += 1;
+  try {
+    callback();
+  } finally {
+    ignoredMutationDepth = Math.max(0, ignoredMutationDepth - 1);
+  }
 }
