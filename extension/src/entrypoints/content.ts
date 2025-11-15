@@ -62,13 +62,13 @@ function scheduleHighlightRun() {
   scheduledRunHandle = window.setTimeout(() => {
     scheduledRunHandle = null;
     console.log("entrolight: executing highlight run", { runId });
-    highlightLowEntropyText(runId).catch((error) => {
+    highlightHighEntropyText(runId).catch((error) => {
       console.error("entrolight highlight failed", error);
     });
   }, HIGHLIGHT_DEBOUNCE_MS);
 }
 
-async function highlightLowEntropyText(runId: number) {
+async function highlightHighEntropyText(runId: number) {
   const root = document.body ?? document.documentElement;
   if (!root) {
     return;
@@ -77,6 +77,7 @@ async function highlightLowEntropyText(runId: number) {
   suppressMutationScheduling = true;
   try {
     const { markdown, sourceMap } = serializeDocumentWithSourceMap(root);
+    console.log("entrolight: markdown", markdown);
     console.log("entrolight: requesting inference", { length: markdown.length, runId });
     const response = await requestInference(markdown);
     if (!response || runId !== latestScheduledRunId) {

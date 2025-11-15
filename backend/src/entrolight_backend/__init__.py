@@ -27,7 +27,11 @@ _llm = None
 def _get_llm() -> LLM:
     global _llm
     if _llm is None:
-        _llm = LLM(model="google/gemma-3-270m", gpu_memory_utilization=0.5)
+        _llm = LLM(
+            model="google/gemma-3-270m",
+            gpu_memory_utilization=0.5,
+            quantization="bitsandbytes",
+        )
     return _llm
 
 
