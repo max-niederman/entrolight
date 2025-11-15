@@ -1,10 +1,12 @@
 export type EntrolightSettings = {
-  backendEndpoint: string;
+  fireworksApiKey: string;
+  fireworksModel: string;
   surpriseQuantile: number;
 };
 
 export const DEFAULT_SETTINGS: EntrolightSettings = {
-  backendEndpoint: "http://localhost:8000/api/v1/infer",
+  fireworksApiKey: "",
+  fireworksModel: "accounts/fireworks/models/llama-v3p1-8b-instruct",
   surpriseQuantile: 0.95,
 };
 
@@ -34,17 +36,25 @@ export async function saveSettings(
 
 function normalizeSettings(candidate: Partial<EntrolightSettings>): EntrolightSettings {
   return {
-    backendEndpoint: normalizeEndpoint(candidate.backendEndpoint),
+    fireworksApiKey: normalizeApiKey(candidate.fireworksApiKey),
+    fireworksModel: normalizeModel(candidate.fireworksModel),
     surpriseQuantile: normalizeQuantile(candidate.surpriseQuantile),
   };
 }
 
-function normalizeEndpoint(value: unknown): string {
+function normalizeApiKey(value: unknown): string {
   if (typeof value !== "string") {
-    return DEFAULT_SETTINGS.backendEndpoint;
+    return DEFAULT_SETTINGS.fireworksApiKey;
+  }
+  return value.trim();
+}
+
+function normalizeModel(value: unknown): string {
+  if (typeof value !== "string") {
+    return DEFAULT_SETTINGS.fireworksModel;
   }
   const trimmed = value.trim();
-  return trimmed || DEFAULT_SETTINGS.backendEndpoint;
+  return trimmed || DEFAULT_SETTINGS.fireworksModel;
 }
 
 function normalizeQuantile(value: unknown): number {

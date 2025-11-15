@@ -2,7 +2,8 @@
   import { onMount } from "svelte";
   import { DEFAULT_SETTINGS, loadSettings, saveSettings } from "../../lib/settings";
 
-  let backendEndpoint = DEFAULT_SETTINGS.backendEndpoint;
+  let fireworksApiKey = DEFAULT_SETTINGS.fireworksApiKey;
+  let fireworksModel = DEFAULT_SETTINGS.fireworksModel;
   let surpriseQuantileInput = DEFAULT_SETTINGS.surpriseQuantile.toString();
   let initialized = false;
   let status: "idle" | "saving" | "saved" | "error" = "idle";
@@ -11,13 +12,19 @@
 
   onMount(async () => {
     const current = await loadSettings();
-    backendEndpoint = current.backendEndpoint;
+    fireworksApiKey = current.fireworksApiKey;
+    fireworksModel = current.fireworksModel;
     surpriseQuantileInput = current.surpriseQuantile.toString();
     initialized = true;
   });
 
-  function handleBackendInput(event: Event) {
-    backendEndpoint = (event.currentTarget as HTMLInputElement).value;
+  function handleApiKeyInput(event: Event) {
+    fireworksApiKey = (event.currentTarget as HTMLInputElement).value;
+    resetFeedback();
+  }
+
+  function handleModelInput(event: Event) {
+    fireworksModel = (event.currentTarget as HTMLInputElement).value;
     resetFeedback();
   }
 
@@ -36,10 +43,12 @@
     try {
       const parsedQuantile = parseFloat(surpriseQuantileInput);
       const saved = await saveSettings({
-        backendEndpoint,
+        fireworksApiKey,
+        fireworksModel,
         surpriseQuantile: parsedQuantile,
       });
-      backendEndpoint = saved.backendEndpoint;
+      fireworksApiKey = saved.fireworksApiKey;
+      fireworksModel = saved.fireworksModel;
       surpriseQuantileInput = saved.surpriseQuantile.toString();
       status = "saved";
       resetHandle = window.setTimeout(() => {
@@ -67,26 +76,41 @@
 <main>
   <header>
     <h1>Entrolight</h1>
-    <p>Control how much context we send to the backend and how many surprises we highlight.</p>
+    <p>Configure Fireworks access plus the surprise threshold used when highlighting text.</p>
   </header>
 
   {#if !initialized}
     <p class="status">Loading settings…</p>
   {:else}
     <form on:submit|preventDefault={handleSubmit}>
-      <label for="backend-endpoint">
-        <span class="label-heading">Backend endpoint</span>
+      <label for="fireworks-api-key">
+        <span class="label-heading">Fireworks API key</span>
         <input
-          id="backend-endpoint"
-          type="url"
-          name="backend-endpoint"
+          id="fireworks-api-key"
+          type="password"
+          name="fireworks-api-key"
+          autocomplete="off"
+          spellcheck="false"
+          value={fireworksApiKey}
+          on:input={handleApiKeyInput}
+          placeholder="sk_fireworks_..."
+        />
+        <small>Used to authenticate calls to Fireworks' serverless inference API.</small>
+      </label>
+
+      <label for="fireworks-model">
+        <span class="label-heading">Fireworks model code</span>
+        <input
+          id="fireworks-model"
+          type="text"
+          name="fireworks-model"
           required
           spellcheck="false"
-          value={backendEndpoint}
-          on:input={handleBackendInput}
-          placeholder="http://localhost:8000/api/v1/infer"
+          value={fireworksModel}
+          on:input={handleModelInput}
+          placeholder="accounts/fireworks/models/llama-v3p1-8b-instruct"
         />
-        <small>Markdown chunks are POSTed to this FastAPI endpoint.</small>
+        <small>Serverless model identifier passed to Fireworks in each inference request.</small>
       </label>
 
       <label for="surprise-quantile">

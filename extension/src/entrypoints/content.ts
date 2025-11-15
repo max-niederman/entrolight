@@ -12,8 +12,8 @@ import {
 } from "../lib/source-mapped-markdown";
 import { loadSettings } from "../lib/settings";
 
-const MAX_CHUNK_CHARACTERS = 4000;
-const PREFERRED_MIN_CHUNK_CHARACTERS = 2000;
+const MAX_CHUNK_CHARACTERS = 20000;
+const PREFERRED_MIN_CHUNK_CHARACTERS = 12000;
 const MAX_CHUNK_SPLIT_DEPTH = 4;
 const HIGHLIGHT_DEBOUNCE_MS = 500;
 const HIGHLIGHT_NAME = "entrolight-surprise";
