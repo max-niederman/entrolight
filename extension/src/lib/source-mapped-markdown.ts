@@ -106,6 +106,12 @@ export type SourceMappedMarkdown = {
   sourceMap: MarkdownSourceMap;
 };
 
+export type MarkdownChunk = {
+  markdownStart: number;
+  markdownEnd: number;
+  text: string;
+};
+
 const BLOCK_TAGS = new Set([
   "address",
   "article",
@@ -398,4 +404,85 @@ function escapeMarkdownChar(char: string): string {
 
 function escapeAttribute(value: string): string {
   return value.replace(/([()\[\]\\])/g, "\\$1");
+}
+
+export function chunkMarkdown(
+  markdown: string,
+  {
+    maxChunkLength = 4000,
+    preferredMinChunkLength = 2000,
+  }: { maxChunkLength?: number; preferredMinChunkLength?: number } = {},
+): MarkdownChunk[] {
+  const normalizedMax = Math.max(1, Math.floor(maxChunkLength));
+  const normalizedMin = Math.max(1, Math.min(Math.floor(preferredMinChunkLength), normalizedMax));
+  const chunks: MarkdownChunk[] = [];
+  let start = 0;
+  while (start < markdown.length) {
+    const hardEnd = Math.min(start + normalizedMax, markdown.length);
+    const boundary = findChunkBoundary(markdown, start, hardEnd, normalizedMin);
+    const end = boundary === -1 ? hardEnd : boundary;
+    chunks.push({
+      markdownStart: start,
+      markdownEnd: end,
+      text: markdown.slice(start, end),
+    });
+    start = end;
+  }
+  if (chunks.length === 0 && markdown.length === 0) {
+    return [];
+  }
+  return chunks.filter((chunk) => chunk.markdownEnd > chunk.markdownStart);
+}
+
+function findChunkBoundary(
+  markdown: string,
+  chunkStart: number,
+  hardEnd: number,
+  preferredMinLength: number,
+): number {
+  if (hardEnd - chunkStart <= 0) {
+    return -1;
+  }
+  const available = hardEnd - chunkStart;
+  const searchAnchor =
+    available > preferredMinLength ? chunkStart + preferredMinLength : chunkStart + Math.floor(available / 2);
+  const searchStart = Math.min(Math.max(chunkStart + 1, searchAnchor), hardEnd);
+  if (searchStart >= hardEnd) {
+    return -1;
+  }
+  const doubleBreak = findLastIndex(markdown, "\n\n", searchStart, hardEnd);
+  if (doubleBreak !== -1) {
+    return doubleBreak + 2;
+  }
+  const singleBreak = findLastIndex(markdown, "\n", searchStart, hardEnd);
+  if (singleBreak !== -1) {
+    return singleBreak + 1;
+  }
+  const sentenceBreak = findSentenceBoundary(markdown, searchStart, hardEnd);
+  if (sentenceBreak !== -1) {
+    return sentenceBreak;
+  }
+  return -1;
+}
+
+function findLastIndex(text: string, needle: string, start: number, end: number): number {
+  const window = text.slice(start, end);
+  const location = window.lastIndexOf(needle);
+  if (location === -1) {
+    return -1;
+  }
+  return start + location;
+}
+
+function findSentenceBoundary(text: string, start: number, end: number): number {
+  for (let index = end - 1; index >= start; index -= 1) {
+    const char = text[index];
+    if (char === "." || char === "?" || char === "!") {
+      const nextChar = text[index + 1] ?? "";
+      if (nextChar === "" || /\s/.test(nextChar)) {
+        return index + 1;
+      }
+    }
+  }
+  return -1;
 }

@@ -8,7 +8,14 @@ export type InferenceResponse = {
   tokens: InferenceToken[];
 };
 
-export const INFERENCE_ENDPOINT = "http://127.0.0.1:8000/api/v1/infer";
+export type InferenceErrorResponse = {
+  error: "PROMPT_TOO_LONG";
+  maxTokens: number;
+  tokenCount: number;
+};
+
+export type InferenceResult = InferenceResponse | InferenceErrorResponse;
+
 export const INFERENCE_MESSAGE_TYPE = "entrolight:perform-inference";
 
 export type InferenceRequestMessage = {
