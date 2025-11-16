@@ -1,6 +1,6 @@
 {
-  "name": "wxt-svelte-starter",
-  "description": "manifest.json description",
+  "name": "entrolight",
+  "description": "Entrolight is a browser extension which uses LLMs to automatically highlight high-entropy parts of webpages.",
   "private": true,
   "version": "0.0.0",
   "type": "module",

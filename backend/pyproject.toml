@@ -1,2 +1,0 @@
-[tool.flit.build.targets.wheel]
-packages = ["entrolight_backend"]

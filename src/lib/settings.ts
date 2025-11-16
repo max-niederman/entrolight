@@ -6,7 +6,7 @@ export type EntrolightSettings = {
 
 export const DEFAULT_SETTINGS: EntrolightSettings = {
   fireworksApiKey: "",
-  fireworksModel: "accounts/fireworks/models/llama-v3p1-8b-instruct",
+  fireworksModel: "accounts/fireworks/models/gpt-oss-20b",
   surpriseQuantile: 0.95,
 };
 
